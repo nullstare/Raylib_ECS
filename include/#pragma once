@@ -1,0 +1,14 @@
+#pragma once
+
+#include "entityManager.h"
+
+struct Hitbox{
+	int id; /* Negative id for free component. */
+	int entityId;
+	Rectangle rect;
+};
+
+void formatHitbox( void* elementP );
+bool isFreeHitbox( void* elementP );
+Hitbox* hitboxNew( Entity* entity, Rectangle rect );
+void hitboxesDraw();
