@@ -1,14 +1,12 @@
 #pragma once
 
-#define ALLOC_PAGE_SIZE 32
-
 typedef struct {
 	int size;
 	int capacity;
 	size_t elementSize;
 	void* elements;
-	void (*freeCallback)( void* );
-	bool (*isFreeCallback)( void* );
+	void (*freeCallback)( void* ); /* Components provide callback to free themselves. */
+	bool (*isFreeCallback)( void* ); /* Components provide callback to determine when free. */
 } DynArray;
 
 int dynArrayAddElement( DynArray* arr, void** elementP );
@@ -18,4 +16,5 @@ bool dynArrayIsFreeElement( DynArray* arr, int id );
 void dynArrayFreeElement( DynArray* arr, int id );
 void dynArrayFreeByEntityId( DynArray* arr, int id );
 void dynArrayInit( DynArray* arr, size_t elementSize, void (*freeCallback)( void* ),bool (*isFreeCallback)( void* ) );
+void dynArrayClear( DynArray* arr );
 void dynArrayFree( DynArray* arr );

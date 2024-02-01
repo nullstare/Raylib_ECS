@@ -10,60 +10,84 @@ EntityManager* entityManager;
 
 void entityFree( void* elementP ) {
 	Entity* entity = (Entity*)elementP;
-
 	entity->id = -1;
-	memset( &entity->signature, 0, sizeof( Signature ) );
 }
 
 bool entityIsFree( void* elementP ) {
 	Entity* entity = (Entity*)elementP;
-
 	return entity->id < 0;
+}
+
+void entityComFree( void* elementP ) {
+	Ref* ref = (Ref*)elementP;
+	ref->type = COM_TYPE_NULL;
+	ref->id = -1;
+}
+
+bool entityComIsFree( void* elementP ) {
+	Ref* ref = (Ref*)elementP;
+	return ref->id < 0;
 }
 
 void entityManagerInit() {
 	entityManager = malloc( sizeof( EntityManager ) );
 	dynArrayInit( &entityManager->entities, sizeof( Entity ), entityFree, entityIsFree );
-	dynArrayInit( &entityManager->behaviors, sizeof( TransformC ), behaviorFree, behaviorIsFree );
-	dynArrayInit( &entityManager->transforms, sizeof( TransformC ), transformFree, transformIsFree );
-	dynArrayInit( &entityManager->hitboxes, sizeof( HitboxC ), hitboxFree, hitboxIsFree );
-	dynArrayInit( &entityManager->sprites, sizeof( SpriteC ), spriteFree, spriteIsFree );
-}
 
-void entityManagerFreeEntity( int id ) {
-	Entity* entity = entityGet( id );
-
-	if ( 0 <= entity->id ) {
-		if ( entity->signature.behavior ) dynArrayFreeByEntityId( &entityManager->behaviors, entity->id );
-		if ( entity->signature.transform ) dynArrayFreeByEntityId( &entityManager->transforms, entity->id );
-		if ( entity->signature.hitbox )	dynArrayFreeByEntityId( &entityManager->hitboxes, entity->id );
-		if ( entity->signature.sprite )	dynArrayFreeByEntityId( &entityManager->sprites, entity->id );
-	}
-	entityFree( entity );
+	dynArrayInit( &entityManager->components[ COM_TYPE_BEHAVIOR ], sizeof( BehaviorC ), behaviorFree, behaviorIsFree );
+	dynArrayInit( &entityManager->components[ COM_TYPE_TRANSFORM ], sizeof( TransformC ), transformFree, transformIsFree );
+	dynArrayInit( &entityManager->components[ COM_TYPE_HITBOX ], sizeof( HitboxC ), hitboxFree, hitboxIsFree );
+	dynArrayInit( &entityManager->components[ COM_TYPE_SPRITE ], sizeof( SpriteC ), spriteFree, spriteIsFree );
 }
 
 void entityManagerFree() {
 	dynArrayFree( &entityManager->entities );
-	dynArrayFree( &entityManager->behaviors );
-	dynArrayFree( &entityManager->transforms );
-	dynArrayFree( &entityManager->hitboxes );
-	dynArrayFree( &entityManager->sprites );
 
+	for ( int i = 0; i < COMPONENT_TYPE_COUNT; i++ ) {
+		dynArrayFree( &entityManager->components[i] );
+	}
 	free( entityManager );
 
 	TraceLog( LOG_INFO, "Entity System Freed" );
 }
 
 Entity* entityNew() {
-	void* elementP = NULL;
-	int id = dynArrayAddElement( &entityManager->entities, &elementP );
-	Entity* entity = (Entity*)elementP;
+	Entity* entity = NULL;
+	int id = dynArrayAddElement( &entityManager->entities, (void*)&entity );
 
 	entity->id = id;
+	dynArrayInit( &entity->components, sizeof( Ref ), entityComFree, entityComIsFree );
 
 	return entity;
 }
 
+void entityRemove( int entityId ) {
+	Entity* entity = entityGet( entityId );
+
+	for ( int entityComId = 0; entityComId < entity->components.size; entityComId++ ) {
+		Ref* ref = (Ref*)dynArrayGetElement( &entity->components, entityComId );
+
+		dynArrayFreeElement( &entityManager->components[ ref->type ], ref->id );
+	}
+	dynArrayClear( &entity->components );
+	entityFree( entity );
+}
+
 Entity* entityGet( int id ) {
 	return (Entity*)dynArrayGetElement( &entityManager->entities, id );
+}
+
+void* entityGetComponentByType( int entityId, int type ) {
+	if ( entityId < 0 ) {
+		return NULL;
+	}
+	Entity* entity = entityGet( entityId );
+
+	for ( int i = 0; i < entity->components.size; i++ ) {
+		Ref* ref = (Ref*)dynArrayGetElement( &entity->components, i );
+
+		if ( 0 <= ref->id && ref->type == type ) {
+			return dynArrayGetElement( &entityManager->components[ ref->type ], ref->id );
+		}
+	}
+	return NULL;
 }

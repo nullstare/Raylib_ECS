@@ -7,7 +7,7 @@
 void spriteFree( void* elementP ) {
 	SpriteC* sprite = (SpriteC*)elementP;
 
-	sprite->header = (ComHeader){ .id = -1, .entityId = -1 };
+	sprite->header = (ComHeader){ .id = -1, .entityId = -1, .type = COM_TYPE_NULL };
 	sprite->offset = (Vector2){ 0, 0 };
 	sprite->texture = NULL;
 	sprite->animation = NULL;
@@ -17,34 +17,37 @@ void spriteFree( void* elementP ) {
 
 bool spriteIsFree( void* elementP ) {
 	SpriteC* sprite = (SpriteC*)elementP;
-
 	return sprite->header.id < 0;
 }
 
-SpriteC* spriteNew( Entity* entity, Vector2 offset, Texture* texture, SpriteAnimation* animation, Color tint ) {
-	void* elementP = NULL;
-	int id = dynArrayAddElement( &entityManager->sprites, &elementP );
-	SpriteC* sprite = (SpriteC*)elementP;
+SpriteC* spriteNew( Entity* entity, Vector2 offset, Texture* texture, SpriteAnimation* animation, Color tint, float animSpeed ) {
+	SpriteC* sprite = NULL;
+	int id = dynArrayAddElement( &entityManager->components[ COM_TYPE_SPRITE ], (void*)&sprite );
 
-	sprite->header = (ComHeader){ .id = id, .entityId = entity->id };
+	sprite->header = (ComHeader){ .id = id, .entityId = entity->id, .type = COM_TYPE_SPRITE };
 	sprite->offset = offset;
 	sprite->texture = texture;
 	sprite->animation = animation;
 	sprite->tint = tint;
 	sprite->animPos = 0.0;
+	sprite->animSpeed = animSpeed;
 
-	entity->signature.sprite = true;
+	/* Add component to entity component list. */
+	Ref* ref = NULL;
+	dynArrayAddElement( &entity->components, (void*)&ref );
+	ref->type = COM_TYPE_SPRITE;
+	ref->id = id;
 
 	return sprite;
 }
 
 SpriteC* spriteGet( int id ) {
-	return (SpriteC*)dynArrayGetElement( &entityManager->sprites, id );
+	return (SpriteC*)dynArrayGetElement( &entityManager->components[ COM_TYPE_SPRITE ], id );
 }
 
-/* Return NULL of not found. */
+/* Return NULL if not found. */
 SpriteC* spriteGetByEntityId( int id ) {
-	for ( int i = 0; i < entityManager->sprites.size; i++ ) {
+	for ( int i = 0; i < entityManager->components[ COM_TYPE_SPRITE ].size; i++ ) {
 		SpriteC* sprite = spriteGet( i );
 
 		if ( sprite->header.entityId == id ) {
@@ -54,35 +57,35 @@ SpriteC* spriteGetByEntityId( int id ) {
 	return NULL;
 }
 
-static void drawSprite( SpriteC* sprite, Rectangle dst, Color color ) {
-	int frame = floor( Lerp( 0.0, (float)sprite->animation->frameCount, sprite->animPos ) );
+void spriteProcess() {
+	for ( int i = 0; i < entityManager->components[ COM_TYPE_SPRITE ].size; i++ ) {
+		SpriteC* sprite = spriteGet( i );
+		
+		if ( 0 <= sprite->header.id ) {
+			sprite->animPos += sprite->animSpeed * GetFrameTime();
 
-	Rectangle src = sprite->animation->src[ frame ];
-
-	DrawTexturePro(
-		*sprite->texture,
-		src,
-		dst,
-		(Vector2){ 0.0, 0.0 },
-		0.0,
-		color
-	);
+			if ( 1.0 < sprite->animPos ) {
+				sprite->animPos -= 1.0;
+			}
+		}
+	}
 }
 
 void spriteDraw() {
-	for ( int i = 0; i < entityManager->sprites.size; i++ ) {
+	for ( int i = 0; i < entityManager->components[ COM_TYPE_SPRITE ].size; i++ ) {
 		SpriteC* sprite = spriteGet( i );
-		TransformC* transform = transformGetByEntityId( sprite->header.entityId );
-		Vector2 position = { sprite->offset.x, sprite->offset.y };
-		Vector2 scale = { 1, 1 };
-
-		if ( transform != NULL ) {
-			position.x += transform->position.x;
-			position.y += transform->position.y;
-			scale = transform->scale;
-		}
 
 		if ( 0 <= sprite->header.id && sprite->animation != NULL ) {
+			TransformC* transform = entityGetComponentByType( sprite->header.entityId, COM_TYPE_TRANSFORM );
+			Vector2 position = { sprite->offset.x, sprite->offset.y };
+			Vector2 scale = { 1, 1 };
+
+			if ( transform != NULL ) {
+				position.x += transform->position.x;
+				position.y += transform->position.y;
+				scale = transform->scale;
+			}
+
 			int frame = floor( Lerp( 0.0, (float)sprite->animation->frameCount, sprite->animPos ) );
 			Rectangle src = sprite->animation->src[ frame ];
 
@@ -92,8 +95,8 @@ void spriteDraw() {
 				(Rectangle){
 					position.x,
 					position.y,
-					sprite->texture->width * scale.x,
-					sprite->texture->height * scale.y
+					src.width * scale.x,
+					src.height * scale.y
 				},
 				(Vector2){ 0.0, 0.0 },
 				0.0,

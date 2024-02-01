@@ -2,23 +2,25 @@
 #include "dynArray.h"
 #include "entityManager.h"
 
-static void checkArrayRealloc( DynArray* arr, int id ) {
+static bool checkArrayRealloc( DynArray* arr, int id ) {
 	if ( id == arr->size ) {
 		arr->size++;
 	}
 	if ( arr->size == arr->capacity ) {
 		arr->capacity += ALLOC_PAGE_SIZE;
 		arr->elements = realloc( arr->elements, arr->capacity * arr->elementSize );
-
-		void* elementP = arr->elements + id * arr->elementSize;
+		int iters = 0;
 
 		for ( id = arr->size; id < arr->capacity; id++ ) {
 			dynArrayFreeElement( arr, id );
-			elementP += arr->elementSize;
+			iters++;
 		}
+		return true;
 	}
+	return false;
 }
 
+/* elementP will be set to free element slot. */
 int dynArrayAddElement( DynArray* arr, void** elementP ) {
 	int id = 0;
 	*elementP = arr->elements;
@@ -29,7 +31,10 @@ int dynArrayAddElement( DynArray* arr, void** elementP ) {
 		}
 		*elementP += arr->elementSize;
 	}
-	checkArrayRealloc( arr, id );
+	/* Important!! After realloc our elements live in new address so we need to reassing our pointer. */
+	if ( checkArrayRealloc( arr, id ) ) {
+		*elementP = arr->elements + ( arr->size - 1 ) * arr->elementSize;
+	}
 
 	return id;
 }
@@ -46,11 +51,15 @@ int dynArrayGetElementByEntityId( DynArray* arr, int id ) {
 }
 
 bool dynArrayIsFreeElement( DynArray* arr, int id ) {
-	return arr->isFreeCallback( dynArrayGetElement( arr, id ) );
+	if ( arr->isFreeCallback != NULL ) {
+		return arr->isFreeCallback( dynArrayGetElement( arr, id ) );
+	}
 }
 
 void dynArrayFreeElement( DynArray* arr, int id ) {
-	arr->freeCallback( dynArrayGetElement( arr, id ) );
+	if ( arr->freeCallback != NULL ) {
+		arr->freeCallback( dynArrayGetElement( arr, id ) );
+	}
 }
 
 /* Free all components with entity id. */
@@ -72,14 +81,21 @@ void dynArrayInit( DynArray* arr, size_t elementSize, void (*freeCallback)( void
 	arr->freeCallback = freeCallback;
 	arr->isFreeCallback = isFreeCallback;
 
+	dynArrayClear( arr );
+}
+
+void dynArrayClear( DynArray* arr ) {
 	void* elementP = arr->elements;
 
-	for ( int id = arr->size; id < arr->capacity; id++ ) {
+	for ( int id = 0; id < arr->capacity; id++ ) {
 		dynArrayFreeElement( arr, id );
 		elementP += arr->elementSize;
 	}
+	arr->size = 0;
 }
 
 void dynArrayFree( DynArray* arr ) {
-	free( arr->elements );
+	if ( 0 < arr->capacity ) {
+		free( arr->elements );
+	}
 }
