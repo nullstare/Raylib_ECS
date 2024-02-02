@@ -9,8 +9,9 @@ struct HitboxC{
 	void (*collisionCallback)( HitboxC*, HitboxC* );
 };
 
-void hitboxFree( void* elementP );
-bool hitboxIsFree( void* elementP );
+/* Dynamic array callbacks. */
+void hitboxFree( void* elementP, bool init );
+/* Hitbox functions. */
 HitboxC* hitboxNew( Entity* entity, Rectangle rect, void (*collisionCallback)( HitboxC*, HitboxC* ) );
 HitboxC* hitboxGet( int id );
 HitboxC* hitboxGetByEntityId( int id );

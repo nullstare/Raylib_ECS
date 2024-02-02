@@ -11,7 +11,7 @@ enum ComponentTypes{
 	COM_TYPE_SPRITE
 };
 
-#define COMPONENT_TYPE_COUNT COM_TYPE_SPRITE + 1 /* We don't count COM_TYPE_NULL here. */
+#define COM_TYPE_COUNT COM_TYPE_SPRITE + 1 /* We don't count COM_TYPE_NULL here. */
 
 typedef struct Entity Entity;
 /* Components have suffix C. */
@@ -22,8 +22,8 @@ typedef struct SpriteC SpriteC;
 
 /* Component reference for entities. */
 typedef struct {
-	int type;
 	int id;
+	int type;
 } Ref;
 
 /* Component header. Must always be the first member of component struct. */
@@ -41,17 +41,21 @@ struct Entity {
 
 typedef struct {
 	DynArray entities;
-	DynArray components[ COMPONENT_TYPE_COUNT ];
+	DynArray components[ COM_TYPE_COUNT ];
 } EntityManager;
 
 extern EntityManager* entityManager;
 
-void entityFree( void* elementP );
+/* Dynamic array callbacks. */
+void entityFree( void* elementP, bool init );
 bool entityIsFree( void* elementP );
-void entityComFree( void* elementP );
+void entityComFree( void* elementP, bool init );
 bool entityComIsFree( void* elementP );
+bool comDefaultIsFree( void* elementP );
+/* Entity manager functions. */
 void entityManagerInit();
 void entityManagerFree();
+/* Entity functions. */
 Entity* entityNew();
 void entityRemove( int id );
 Entity* entityGet( int id );

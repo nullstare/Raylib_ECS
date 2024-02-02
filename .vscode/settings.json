@@ -31,6 +31,8 @@
 		"behavior.h": "c",
 		"thread": "c",
 		"dynarray.h": "c",
-		"entitymanager.h": "c"
+		"entitymanager.h": "c",
+		"typeindex": "c",
+		"typeinfo": "c"
 	}
 }

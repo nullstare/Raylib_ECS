@@ -1,152 +1,99 @@
 #include "main.h"
 #include "resources.h"
 
-Resources* res;
+Resources* resources;
 
-static void checkTextureRealloc( int id ) {
-	if ( id == res->textureCount ) {
-		res->textureCount++;
+/* Dynamic array callbacks. */
+
+void textureFree( void* elementP, bool init ) {
+	TextureR* textureR = (TextureR*)elementP;
+
+	if ( !init ) {
+		free( textureR->header.name );
+		UnloadTexture( textureR->texture );
 	}
-
-	if ( res->textureCount == res->textureAlloc ) {
-		res->textureAlloc += ALLOC_PAGE_SIZE;
-		res->textures = realloc( res->textures, res->textureAlloc * sizeof( Texture ) );
-		res->textureNames = realloc( res->textureNames, res->textureAlloc * sizeof( char* ) );
-
-		for ( id = res->textureCount; id < res->textureAlloc; id++ ) {
-			res->textures[id] = (Texture){ 0 };
-			res->textureNames[id] = NULL;
-		}
-	}
+	textureR->header = (ResHeader){ .id = -1, .name = NULL, .type = RES_TYPE_NULL };
 }
 
-static int newTexture() {
-	int id = 0;
+void animationFree( void* elementP, bool init ) {
+	AnimationR* animationR = (AnimationR*)elementP;
 
-	for ( id = 0; id < res->textureCount; id++ ) {
-		if ( res->textureNames[id] == NULL ) {
-			break;
-		}
+	if ( !init ) {
+		free( animationR->header.name );
+		free( animationR->animation.source );
 	}
-	checkTextureRealloc( id );
-
-	return id;
+	animationR->header = (ResHeader){ .id = -1, .name = NULL, .type = RES_TYPE_NULL };
+	animationR->animation.frameCount = 0;
 }
 
-static void checkAnimationRealloc( int id ) {
-	if ( id == res->animCount ) {
-		res->animCount++;
-	}
-
-	if ( res->animCount == res->animAlloc ) {
-		res->animAlloc += ALLOC_PAGE_SIZE;
-		res->animations = realloc( res->animations, res->animAlloc * sizeof( SpriteAnimation ) );
-		res->animNames = realloc( res->animNames, res->animAlloc * sizeof( char* ) );
-
-		for ( id = res->animCount; id < res->animAlloc; id++ ) {
-			res->animations[id] = (SpriteAnimation){ 0 };
-			res->animNames[id] = NULL;
-		}
-	}
+bool resDefaultIsFree( void* elementP ) {
+	ResHeader* resHeader = (ResHeader*)elementP;
+	return resHeader->id < 0;
 }
 
-static int newAnimation() {
-	int id = 0;
+/* Resources functions. */
 
-	for ( id = 0; id < res->animCount; id++ ) {
-		if ( res->animNames[id] == NULL ) {
-			break;
-		}
-	}
-	checkAnimationRealloc( id );
+void resourcesInit() {
+	resources = malloc( sizeof( Resources ) );
 
-	return id;
+	dynArrayInit( &resources->assets[ RES_TYPE_TEXTURE ], sizeof( TextureR ), textureFree, resDefaultIsFree );
+	dynArrayInit( &resources->assets[ RES_TYPE_ANIMATION ], sizeof( AnimationR ), animationFree, resDefaultIsFree );
 }
 
-void resInit() {
-	res = malloc( sizeof( Resources ) );
-	/* Textures. */
-	res->textureCount = 0;
-	res->textureAlloc = ALLOC_PAGE_SIZE;
-	res->textures = malloc( res->textureAlloc * sizeof( Texture ) );
-	res->textureNames = malloc( res->textureAlloc * sizeof( char* ) );
-
-	for ( int id = 0; id < res->textureAlloc; id++ ) {
-		res->textures[id] = (Texture){ 0 };
-		res->textureNames[id] = NULL;
+void resourcesFree() {
+	for ( int i = 0; i < RES_TYPE_COUNT; i++ ) {
+		dynArrayFree( &resources->assets[i] );
 	}
-	/* Animations. */
-	res->animCount = 0;
-	res->animAlloc = ALLOC_PAGE_SIZE;
-	res->animations = malloc( res->animAlloc * sizeof( SpriteAnimation ) );
-	res->animNames = malloc( res->animAlloc * sizeof( char* ) );
-
-	for ( int id = 0; id < res->animAlloc; id++ ) {
-		res->animations[id] = (SpriteAnimation){ 0 };
-		res->animNames[id] = NULL;
-	}
-}
-
-void resLoadTexture( const char* path ) {
-	int id = newTexture();
-
-	res->textures[id] = LoadTexture( path );
-	res->textureNames[id] = malloc( ( TextLength( GetFileNameWithoutExt( path ) ) + 1 ) * sizeof( char ) );
-	TextCopy( res->textureNames[id], GetFileNameWithoutExt( path ) );
-}
-
-void resLoadAnimation( const char* name, int frameCount, Rectangle* src ) {
-	int id = newAnimation();
-
-	res->animations[id] = (SpriteAnimation){
-		.frameCount = frameCount,
-		.src = malloc( frameCount * sizeof( Rectangle ) ),
-	};
-	for ( int i = 0; i < frameCount; i++ ) {
-		res->animations[id].src[i] = src[i];
-	}
-	res->animNames[id] = malloc( ( TextLength( name ) + 1 ) * sizeof( char ) );
-	TextCopy( res->animNames[id], name );
-}
-
-Texture* resGetTexture( const char* name ) {
-	for ( int id = 0; id < res->textureCount; id++ ) {
-		if ( TextIsEqual( res->textureNames[id], name ) ) {
-			return &res->textures[id];
-		}
-	}
-	return NULL;
-}
-
-SpriteAnimation* resGetAnimation( const char* name ) {
-	for ( int id = 0; id < res->animCount; id++ ) {
-		if ( TextIsEqual( res->animNames[id], name ) ) {
-			return &res->animations[id];
-		}
-	}
-	return NULL;
-}
-
-void resFree() {
-	/* Textures. */
-	for ( int id = 0; id < res->textureCount; id++ ) {
-		if ( res->textureNames[id] != NULL ) {
-			free( res->textureNames[id] );
-		}
-	}
-	free( res->textures );
-	free( res->textureNames );
-	/* Animations. */
-	for ( int id = 0; id < res->animCount; id++ ) {
-		if ( res->animNames[id] != NULL ) {
-			free( res->animations[id].src );
-			free( res->animNames[id] );
-		}
-	}
-	free( res->animations );
-	free( res->animNames );
-
-	free( res );
-
+	free( resources );
 	TraceLog( LOG_INFO, "Resources Freed" );
+}
+
+void resourcesLoadTexture( const char* path ) {
+	TextureR* textureR = NULL;
+	int id = dynArrayAddElement( &resources->assets[ RES_TYPE_TEXTURE ], (void*)&textureR );
+
+	textureR->header = (ResHeader){ .id = id, .type = RES_TYPE_TEXTURE };
+	const char* fileName = GetFileNameWithoutExt( path );
+	textureR->header.name = malloc( ( TextLength( fileName ) + 1 ) * sizeof( char ) );
+	TextCopy( textureR->header.name, fileName );
+	textureR->texture = LoadTexture( path );
+}
+
+void resourcesLoadAnimation( const char* name, int frameCount, Rectangle* source ) {
+	AnimationR* animationR = NULL;
+	int id = dynArrayAddElement( &resources->assets[ RES_TYPE_ANIMATION ], (void*)&animationR );
+
+	animationR->header = (ResHeader){ .id = id, .type = RES_TYPE_ANIMATION };
+	animationR->header.name = malloc( ( TextLength( name ) + 1 ) * sizeof( char ) );
+	TextCopy( animationR->header.name, name );
+	animationR->animation.frameCount = frameCount;
+	animationR->animation.source = malloc( animationR->animation.frameCount * sizeof( Rectangle ) );
+
+	for ( int i = 0; i < animationR->animation.frameCount; i++ ) {
+		animationR->animation.source[i] = source[i];
+	}
+}
+
+/* Return NULL if not found. */
+Texture* resourcesGetTextureByName( const char* name ) {
+	for ( int i = 0; i < resources->assets[ RES_TYPE_TEXTURE ].size; i++ ) {
+		TextureR* textureR = (TextureR*)dynArrayGetElement( &resources->assets[ RES_TYPE_TEXTURE ], i );
+
+		if ( TextIsEqual( textureR->header.name, name ) ) {
+			return &textureR->texture;
+		}
+	}
+	return NULL;
+}
+
+/* Return NULL if not found. */
+SpriteAnimation* resourcesGetAnimationByName( const char* name ) {
+	for ( int i = 0; i < resources->assets[ RES_TYPE_ANIMATION ].size; i++ ) {
+		AnimationR* animationR = (AnimationR*)dynArrayGetElement( &resources->assets[ RES_TYPE_ANIMATION ], i );
+
+		if ( TextIsEqual( animationR->header.name, name ) ) {
+			return &animationR->animation;
+		}
+	}
+	return NULL;
 }

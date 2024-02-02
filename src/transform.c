@@ -3,7 +3,9 @@
 #include "dynArray.h"
 #include "transform.h"
 
-void transformFree( void* elementP ) {
+/* Dynamic array callbacks. */
+
+void transformFree( void* elementP, bool init ) {
 	TransformC* transform = (TransformC*)elementP;
 
 	transform->header = (ComHeader){ .id = -1, .entityId = -1, .type = COM_TYPE_NULL };
@@ -12,10 +14,7 @@ void transformFree( void* elementP ) {
 	transform->rotation = 0.0;
 }
 
-bool transformIsFree( void* elementP ) {
-	TransformC* transform = (TransformC*)elementP;
-	return transform->header.id < 0;
-}
+/* Transform functions. */
 
 TransformC* transformNew( Entity* entity, Vector2 position, Vector2 scale, float rotation ) {
 	TransformC* transform = NULL;
@@ -29,8 +28,8 @@ TransformC* transformNew( Entity* entity, Vector2 position, Vector2 scale, float
 	/* Add component to entity component list. */
 	Ref* ref = NULL;
 	dynArrayAddElement( &entity->components, (void*)&ref );
-	ref->type = COM_TYPE_TRANSFORM;
 	ref->id = id;
+	ref->type = COM_TYPE_TRANSFORM;
 
 	return transform;
 }

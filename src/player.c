@@ -33,8 +33,6 @@ void playerProcess( BehaviorC* behavior ) {
 
 /* collided is players hitbox. */
 void playerCollision( HitboxC* collided, HitboxC* with ) {
-	// printf( "%d Collided with entity %d\n", collider->header.entityId, with->header.entityId );
-
 	if ( IsKeyPressed( KEY_SPACE ) ) {
 		entityRemove( with->header.entityId );
 	}

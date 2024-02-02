@@ -4,7 +4,9 @@
 #include "hitbox.h"
 #include "transform.h"
 
-void hitboxFree( void* elementP ) {
+/* Dynamic array callbacks. */
+
+void hitboxFree( void* elementP, bool init ) {
 	HitboxC* hitbox = (HitboxC*)elementP;
 
 	hitbox->header = (ComHeader){ .id = -1, .entityId = -1, .type = COM_TYPE_NULL };
@@ -12,10 +14,7 @@ void hitboxFree( void* elementP ) {
 	hitbox->offset = (Vector2){ 0, 0 };
 }
 
-bool hitboxIsFree( void* elementP ) {
-	HitboxC* hitbox = (HitboxC*)elementP;
-	return hitbox->header.id < 0;
-}
+/* Hitbox functions. */
 
 HitboxC* hitboxNew( Entity* entity, Rectangle rect, void (*collisionCallback)( HitboxC*, HitboxC* ) ) {
 	HitboxC* hitbox = NULL;
@@ -29,8 +28,8 @@ HitboxC* hitboxNew( Entity* entity, Rectangle rect, void (*collisionCallback)( H
 	/* Add component to entity component list. */
 	Ref* ref = NULL;
 	dynArrayAddElement( &entity->components, (void*)&ref );
-	ref->type = COM_TYPE_HITBOX;
 	ref->id = id;
+	ref->type = COM_TYPE_HITBOX;
 
 	return hitbox;
 }
@@ -67,7 +66,7 @@ void hitboxProcess() {
 				/* Note! Slow collision cheking. Grows exponentially. */
 				for ( int j = 0; j < entityManager->components[ COM_TYPE_HITBOX ].size; j++ ) {
 					HitboxC* hitbox2 = hitboxGet( j );
-					/* Should not collide with itself. */
+					/* Should not collide with itself ( i != j ). */
 					if ( 0 <= hitbox2->header.id && i != j && CheckCollisionRecs( hitbox->rect, hitbox2->rect ) ) {
 						hitbox->collisionCallback( hitbox, hitbox2 );
 

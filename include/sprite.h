@@ -13,9 +13,12 @@ struct SpriteC{
 	float animSpeed;
 };
 
-void spriteFree( void* elementP );
-bool spriteIsFree( void* elementP );
-SpriteC* spriteNew( Entity* entity, Vector2 offset, Texture* texture, SpriteAnimation* animation, Color tint, float animSpeed );
+/* Dynamic array callbacks. */
+void spriteFree( void* elementP, bool init );
+/* Sprite functions. */
+SpriteC* spriteNew( Entity* entity, Vector2 offset, Texture* texture, SpriteAnimation* animation,
+	Color tint, float animSpeed
+);
 SpriteC* spriteGet( int id );
 SpriteC* spriteGetByEntityId( int id );
 void spriteProcess();

@@ -4,7 +4,9 @@
 #include "sprite.h"
 #include "transform.h"
 
-void spriteFree( void* elementP ) {
+/* Dynamic array callbacks. */
+
+void spriteFree( void* elementP, bool init ) {
 	SpriteC* sprite = (SpriteC*)elementP;
 
 	sprite->header = (ComHeader){ .id = -1, .entityId = -1, .type = COM_TYPE_NULL };
@@ -15,12 +17,11 @@ void spriteFree( void* elementP ) {
 	sprite->animPos = 0.0;
 }
 
-bool spriteIsFree( void* elementP ) {
-	SpriteC* sprite = (SpriteC*)elementP;
-	return sprite->header.id < 0;
-}
+/* Sprite functions. */
 
-SpriteC* spriteNew( Entity* entity, Vector2 offset, Texture* texture, SpriteAnimation* animation, Color tint, float animSpeed ) {
+SpriteC* spriteNew( Entity* entity, Vector2 offset, Texture* texture, SpriteAnimation* animation,
+	Color tint, float animSpeed )
+{
 	SpriteC* sprite = NULL;
 	int id = dynArrayAddElement( &entityManager->components[ COM_TYPE_SPRITE ], (void*)&sprite );
 
@@ -35,8 +36,8 @@ SpriteC* spriteNew( Entity* entity, Vector2 offset, Texture* texture, SpriteAnim
 	/* Add component to entity component list. */
 	Ref* ref = NULL;
 	dynArrayAddElement( &entity->components, (void*)&ref );
-	ref->type = COM_TYPE_SPRITE;
 	ref->id = id;
+	ref->type = COM_TYPE_SPRITE;
 
 	return sprite;
 }
@@ -87,16 +88,16 @@ void spriteDraw() {
 			}
 
 			int frame = floor( Lerp( 0.0, (float)sprite->animation->frameCount, sprite->animPos ) );
-			Rectangle src = sprite->animation->src[ frame ];
+			Rectangle source = sprite->animation->source[ frame ];
 
 			DrawTexturePro(
 				*sprite->texture,
-				src,
+				source,
 				(Rectangle){
 					position.x,
 					position.y,
-					src.width * scale.x,
-					src.height * scale.y
+					source.width * scale.x,
+					source.height * scale.y
 				},
 				(Vector2){ 0.0, 0.0 },
 				0.0,

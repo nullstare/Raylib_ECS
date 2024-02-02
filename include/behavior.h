@@ -7,8 +7,9 @@ struct BehaviorC{
 	void (*process)( BehaviorC* behavior );
 };
 
-void behaviorFree( void* elementP );
-bool behaviorIsFree( void* elementP );
+/* Dynamic array callbacks. */
+void behaviorFree( void* elementP, bool init );
+/* Behavior functions. */
 BehaviorC* behaviorNew( Entity* entity, void (*process)( BehaviorC* behavior ) );
 BehaviorC* behaviorGet( int id );
 BehaviorC* behaviorGetByEntityId( int id );

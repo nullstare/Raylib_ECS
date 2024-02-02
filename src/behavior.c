@@ -3,17 +3,16 @@
 #include "dynArray.h"
 #include "behavior.h"
 
-void behaviorFree( void* elementP ) {
+/* Dynamic array callbacks. */
+
+void behaviorFree( void* elementP, bool init ) {
 	BehaviorC* behavior = (BehaviorC*)elementP;
 
 	behavior->header = (ComHeader){ .id = -1, .entityId = -1, .type = COM_TYPE_NULL };
 	behavior->process = NULL;
 }
 
-bool behaviorIsFree( void* elementP ) {
-	BehaviorC* behavior = (BehaviorC*)elementP;
-	return behavior->header.id < 0;
-}
+/* Behavior functions. */
 
 BehaviorC* behaviorNew( Entity* entity, void (*process)( BehaviorC* behavior ) ) {
 	BehaviorC* behavior = NULL;
@@ -25,8 +24,8 @@ BehaviorC* behaviorNew( Entity* entity, void (*process)( BehaviorC* behavior ) )
 	/* Add component to entity component list. */
 	Ref* ref = NULL;
 	dynArrayAddElement( &entity->components, (void*)&ref );
-	ref->type = COM_TYPE_BEHAVIOR;
 	ref->id = id;
+	ref->type = COM_TYPE_BEHAVIOR;
 
 	return behavior;
 }
